@@ -19,6 +19,7 @@ class CalculatorUI(Tk):
         self.style = ttk.Style()
         self.style.configure("TButton", font=('Monaco', 16), background="gray", foreground="navy")
         self.display = Entry(self, justify="right", state="readonly")
+        self.display.configure(font=("Monaco", 24), background="lightgray")
         self.numpad = self.make_numpad()
         self.operatorpad = self.make_operatorpad()
         frame = Frame(self)
@@ -65,6 +66,11 @@ class CalculatorUI(Tk):
         text = clicked_button["text"]
         
         if text == "=":
+            if self.current_expression.count("(") != self.current_expression.count(")"):
+                self.current_expression += ")" * (self.current_expression.count("(") - self.current_expression.count(")"))
+                self.display.config(state="normal")
+                self.display.insert(END, ")" * (self.current_expression.count("(") - self.current_expression.count(")")))
+                self.display.config(state="readonly")
             result = self.calculate(self.current_expression)
             self.display.config(state="normal")
             self.display.delete(0, END)
@@ -78,10 +84,17 @@ class CalculatorUI(Tk):
             self.display.config(state="readonly")
             self.current_expression = ""
         elif text == "DEL":
-            self.current_expression = self.current_expression[:-1]
-            self.display.config(state="normal")
-            self.display.delete(len(self.current_expression), END)
-            self.display.config(state="readonly")
+            for math_function in ["sqrt", "exp", "log", "log2", "log10"]:
+                if self.current_expression.endswith(math_function):
+                    self.current_expression = self.current_expression[:-len(math_function)]
+                    self.display.config(state="normal")
+                    self.display.delete(len(self.current_expression), END)
+                    self.display.config(state="readonly")
+                else:
+                    self.current_expression = self.current_expression[:-1]
+                    self.display.config(state="normal")
+                    self.display.delete(len(self.current_expression), END)
+                    self.display.config(state="readonly")
         else:
             self.current_expression += text
             self.display.config(state="normal")
@@ -91,10 +104,18 @@ class CalculatorUI(Tk):
 
     def on_function_selected(self, event):
         function = self.functions.get()
-        self.current_expression += function + "("
-        self.display.config(state="normal")
-        self.display.insert(END, f"{function}(")
-        self.display.config(state="readonly")
+        operator = ("+", "-", "*", "/")
+        if self.current_expression.endswith(operator) or self.current_expression == "":
+            self.current_expression += function + "("
+            self.display.config(state="normal")
+            self.display.insert(END, f"{function}(")
+            self.display.config(state="readonly")
+        else: 
+            self.current_expression = f"{function}({self.current_expression})"
+            self.display.config(state="normal")
+            self.display.delete(0, END)
+            self.display.insert(END, self.current_expression)
+            self.display.config(state="readonly")
 
     def play_click_sound(self):
         self.click_sound.play()
@@ -102,7 +123,7 @@ class CalculatorUI(Tk):
     def calculate(self, expression):
         try:
             result = eval(expression)
-            self.model.add_to_history(f"{expression} = {result}")
+            self.model.add_to_history(f"{expression} = {result:.2f}")
             return f"{result:.2f}"
         except Exception as e:
             return f"Error: {e}"
